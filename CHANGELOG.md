@@ -1,3 +1,9 @@
+# 0.1.1
+
+### Bug Fixes
+
+- handling once the returned access token is without expires
+
 # 0.1.0
 
 ### Features and enhancements

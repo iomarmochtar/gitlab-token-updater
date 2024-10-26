@@ -177,10 +177,10 @@ func (g *GitlabTokenUpdater) Do() error {
 
 			befDur, _ := at.cfgAccessToken.RenewBeforeDuration()
 			addMe := g.now.Add(befDur)
-			expiredAt := *at.glAccessToken.ExpiresAt
+			expiresAt := at.glAccessToken.ExpiresAt
 			validToRenew := false
-			if addMe.After(expiredAt) {
-				logTkn.Warn().Msgf("reach renew time. expired: %v, renew before: %s", expiredAt, at.cfgAccessToken.RenewBefore)
+			if expiresAt != nil && addMe.After(*expiresAt) {
+				logTkn.Warn().Msgf("reach renew time. expired: %v, renew before: %s", expiresAt, at.cfgAccessToken.RenewBefore)
 				validToRenew = true
 			}
 
