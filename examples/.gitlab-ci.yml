@@ -1,0 +1,50 @@
+stages:
+  - test
+  - execute
+
+variables:
+  CONF: sample-config.yml
+  EXTRA_ARGS: ""
+  TEST_CONF_ARGS: "--dry-run --force --debug"
+  EXEC: "gitlab-token-updater -c ${CONF} ${EXTRA_ARGS}"
+
+.base:
+  image: iomarmochtar/gitlab-token-updater:latest
+  variables:
+    ALL_ARGS: ""
+  script:
+    - ${EXEC} ${ALL_ARGS}
+
+.ro_token:
+  extends: .base
+  variables:
+    GL_RENEWER_TOKEN: "$TOKEN_RO"
+
+.rw_token:
+  extends: .base
+  variables:
+    GL_RENEWER_TOKEN: "$TOKEN_RW"
+
+conf-test:
+  extends: .ro_token
+  stage: test
+  variables:
+    ALL_ARGS: "--dry-run --force --debug"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - $CONF
+
+renew:
+  extends: .rw_token
+  stage: execute
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+
+force-renew:
+  extends: .rw_token
+  stage: execute
+  variables:
+    ALL_ARGS: "--force"
+  rules:
+    - if: $FORCE_RENEW == 'true' && $CI_PIPELINE_SOURCE != 'schedule'

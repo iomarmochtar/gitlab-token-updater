@@ -1,0 +1,63 @@
+run:
+  timeout: 10m
+    
+linters:
+  enable:
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - errcheck
+    - exhaustive
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - nakedret
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+linters-settings:
+  funlen:
+    lines: 100
+    statements: 60
+  lll:
+    line-length: 200
+  gosec:
+    excludes:
+      - G101
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - goconst
+        - lll
+        - funlen
+        - errcheck
+    - path: test/gencfg.go
+      linters:
+        - revive

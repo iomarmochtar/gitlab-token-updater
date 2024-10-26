@@ -1,0 +1,10 @@
+{
+	"variable_type": "env_var",
+	"key": "THIS_IS_VAR",
+	"value": "updated value",
+	"protected": true,
+	"masked": false,
+	"raw": false,
+	"environment_scope": "*",
+	"description": "null"
+}

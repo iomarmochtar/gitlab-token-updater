@@ -1,0 +1,6 @@
+.env
+.DS_Store
+.dev
+config.yml
+coverage.*
+dist/*

@@ -1,0 +1,52 @@
+# host will be use default one to https://gitlab.com/
+# token will set be provided use env variable (GL_RENEWER_TOKEN), see .gitlab-ci.yml for more detail
+
+manage_tokens:
+  - path: path/to/group
+    type: group
+    access_tokens:
+      - name: api_automation
+        hooks:
+          - type: update_var
+            args:
+              path: path/to/another/subgroup
+              type: group
+              name: AUTOMATION_TOKEN
+
+          - type: exec_cmd
+            args:
+              path: ./scripts/trigger_pipeline_to_update_k8s_secret.py
+
+      - name: monitoring_purpose
+        expiry_after_rotate: 3M
+
+  - path: path/to/repo
+    type: repository
+    access_tokens:
+      - name: TF IaC
+        hooks:
+          - type: update_var
+            args:
+              path: path/to/repo
+              type: repository
+              name: MR_COMMECTER_TOKEN
+
+# sample self updating currently used token
+  - type: personal
+    access_tokens:
+      - name: access_token_renewer_rw
+        hooks:
+          - type: use_token
+          - type: update_var
+            args:
+              name: TOKEN_RW
+              type: repository
+              path: path-to/repo/access-token-renewer
+
+      - name: access_token_renewer_ro
+        hooks:
+          - type: update_var
+            args:
+              name: TOKEN_RO
+              type: repository
+              path: path-to/repo/access-token-renewer

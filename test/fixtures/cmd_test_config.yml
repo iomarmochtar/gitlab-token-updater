@@ -1,0 +1,15 @@
+host: ${HTTP_TEST}
+token: glpat-manager
+
+manage_tokens:
+  - path: /some/group/path
+    type: group
+    access_tokens:
+      - name: TOKEN1
+        renew_before: 5M
+        hooks:
+          - type: update_var
+            args:
+              type: repository
+              path: /some/repo/path
+              name: THIS_IS_VAR

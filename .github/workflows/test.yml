@@ -1,0 +1,38 @@
+name: tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
+
+env:
+  GO_VERSION: 1.23
+  LINTER_VERSION: 1.61.0
+  CGO_ENABLED: 0
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: v${{ env.LINTER_VERSION }}
+  
+  unit-test:
+    name: unit-test 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: install required packages
+        run: sudo apt install -y make
+      - run: make test-all
