@@ -26,6 +26,27 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 		currentTime    *time.Time
 		expectedErrMsg string
 	}{
+		"success: simple scenario": {
+			config: func() *cfg.Config {
+				c := t_helper.GenConfig(nil, nil, nil)
+				return c
+			},
+			currentTime: t_helper.GenTime("2024-04-05"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				newToken := "glpat-newnew"
+				g := gm.NewMockGitlabAPI(ctrl)
+
+				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				g.EXPECT().RotateRepoToken(t_helper.SampleRepoPath, 123, *t_helper.GenTime("2024-07-04")).Return(newToken, nil)
+				g.EXPECT().UpdateRepoVar(t_helper.SampleRepoPath, t_helper.SampleCICDVar, newToken).Return(nil)
+
+				return g
+			},
+			mockShell: func(ctrl *gomock.Controller) *sm.MockShell {
+				return nil
+			},
+		},
 		"update access token that will expired in 1 month ahead and execute all hooks": {
 			config: func() *cfg.Config {
 				anotherManageTokens := t_helper.GenManageTokens(nil, nil, nil)
@@ -59,13 +80,38 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				return s
 			},
 		},
-		"no access token will be expired and no hooks executed": {
+		"skip: no access token will be expired and no hooks executed": {
 			config: func() *cfg.Config {
 				return t_helper.GenConfig(nil, nil, nil)
 			},
 			currentTime: t_helper.GenTime("2024-01-01"),
 			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
 				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
+				g := gm.NewMockGitlabAPI(ctrl)
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+		},
+		"skip: access token without expiry excluded from the execution": {
+			config: func() *cfg.Config {
+				return t_helper.GenConfig(nil, nil, nil)
+			},
+			currentTime: t_helper.GenTime("2024-01-01"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				accessTokens := []gl.GitlabAccessToken{
+					{
+						Name:      "MR Handler",
+						Type:      gl.GitlabTargetTypeRepo,
+						ID:        123,
+						Path:      t_helper.SampleRepoPath,
+						Active:    true,
+						Revoked:   false,
+						ExpiresAt: nil,
+					},
+				}
 				g := gm.NewMockGitlabAPI(ctrl)
 				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
 				return g
