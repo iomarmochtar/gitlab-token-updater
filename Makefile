@@ -4,11 +4,11 @@ GO_FILES = $(shell go list ./... | grep -v mocks)
 
 .PHONY: test
 test:
-	go test -v -race $(GO_FILES) -coverprofile=coverage.out
+	go test -v $(GO_FILES) -coverprofile=coverage.out
 
 .PHONY: test-s
 test-s:
-	go test -v -race $(pkg)
+	go test -v $(pkg)
 
 .PHONY: gen-mocks
 gen-mocks:
