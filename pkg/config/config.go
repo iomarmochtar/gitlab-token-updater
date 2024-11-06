@@ -66,13 +66,14 @@ type HookUpdateVar struct {
 }
 
 type HookExecScript struct {
-	Path string
+	Path   string
+	EnvVar map[string]string
 }
 
 type Hook struct {
-	Type  string            `yaml:"type"`
-	Retry uint8             `yaml:"retry"`
-	Args  map[string]string `yaml:"args"`
+	Type  string         `yaml:"type"`
+	Retry uint8          `yaml:"retry"`
+	Args  map[string]any `yaml:"args"`
 }
 
 func (h Hook) validate() error {
@@ -81,19 +82,19 @@ func (h Hook) validate() error {
 	}
 
 	if h.Type == HookTypeUpdateVar {
-		if h.Args["name"] == "" {
+		if h.Args["name"] == nil {
 			return ErrValidationHookUpdateVarMissingName
 		}
 
-		if h.Args["path"] == "" {
+		if h.Args["path"] == nil {
 			return ErrValidationHookUpdateVarMissingPath
 		}
 
-		if !contains(ManagedTypeList, h.Args["type"]) {
+		if h.Args["type"] != nil && !contains(ManagedTypeList, h.Args["type"].(string)) {
 			return ErrValidationHookUpdateVarInvalidType
 		}
 	} else if h.Type == HookTypeExecCMD {
-		if h.Args["path"] == "" {
+		if h.Args["path"] == nil {
 			return ErrValidationHookExecCMDMissingPath
 		}
 	}
@@ -102,16 +103,32 @@ func (h Hook) validate() error {
 
 func (h Hook) UpdateVarArgs() HookUpdateVar {
 	return HookUpdateVar{
-		Name: h.Args["name"],
-		Path: h.Args["path"],
-		Type: h.Args["type"],
+		Name: h.Args["name"].(string),
+		Path: h.Args["path"].(string),
+		Type: h.Args["type"].(string),
 	}
 }
 
+// ExecCMDArgs return the list of argument in execution hook exec_cmd
 func (h Hook) ExecCMDArgs() HookExecScript {
-	return HookExecScript{
-		Path: h.Args["path"],
+	execArgs := HookExecScript{
+		Path: h.Args["path"].(string),
 	}
+	execArgs.EnvVar = make(map[string]string)
+
+	if envVar := h.Args["env"]; envVar != nil {
+		convEnvVar := envVar.(map[any]any)
+		for key, value := range convEnvVar {
+			strKey, keyOk := key.(string)
+			strValue, valueOk := value.(string)
+
+			if keyOk && valueOk {
+				execArgs.EnvVar[strKey] = strValue
+			}
+		}
+	}
+
+	return execArgs
 }
 
 func (h Hook) StrArgs() string {

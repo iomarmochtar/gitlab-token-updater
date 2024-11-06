@@ -112,7 +112,7 @@ Consist of YAML formatted content, see the sample one in [sample-config.yml](./e
 - Accepted duration suffixes: `d` (day), `M` (month), `Y` (year).
 - Required arguments for hook types:
   - `update_var`: `.type` (repository or group), `.path` (location), and `name` (variable name).
-  - `exec_cmd`: `.path` (location of executable) with `GL_NEW_TOKEN` as injected environment variable for the new token.
+  - `exec_cmd`: `.path` (location of executable) with `GL_NEW_TOKEN` as injected environment variable for the new token, you can pass another env variables using `.env`.
   - `use_token`: not requiring any arguments, it will uses the new token in the current API call; can only be set once as the first hook.
 
 ## Development

@@ -1,3 +1,13 @@
+# 0.2.0
+
+### Features and enhancements
+
+- [config] read external config file for `manage_tokens` by keyword `include`
+- [config] add validation in detecting duplicated manage token
+- [config] give the relevan sequence of errors detected in `manage_tokens` config, for easier in config trouble shooting
+- [log] introduce arg `--log-json` for logging in JSON format
+- [hook] passing additional env var in `exec_cmd` by args `env`
+
 # 0.1.1
 
 ### Bug Fixes

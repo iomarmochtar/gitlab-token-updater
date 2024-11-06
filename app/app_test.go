@@ -55,7 +55,15 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				anotherManageTokens[0].Tokens[0].Hooks[0] = t_helper.SampleHookUpdateVarGroup
 
 				c := t_helper.GenConfig(anotherManageTokens, nil, nil)
-				c.Managed[0].Tokens[0].Hooks = append(c.Managed[0].Tokens[0].Hooks, t_helper.SampleHookExecScript)
+				c.Managed[0].Tokens[0].Hooks = append(c.Managed[0].Tokens[0].Hooks, cfg.Hook{
+					Type: cfg.HookTypeExecCMD,
+					Args: map[string]any{
+						"path": t_helper.SamplePathToScript,
+						"env": map[any]any{
+							"ENV1": "additional_env",
+						},
+					},
+				})
 				return c
 			},
 			currentTime: t_helper.GenTime("2024-04-05"),
@@ -76,7 +84,8 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			},
 			mockShell: func(ctrl *gomock.Controller) *sm.MockShell {
 				s := sm.NewMockShell(ctrl)
-				s.EXPECT().Exec(t_helper.SamplePathToScript, map[string]string{"GL_NEW_TOKEN": "glpat-newnew"}).Return([]byte("abc"), nil)
+				expectedEnvVar := map[string]string{"GL_NEW_TOKEN": "glpat-newnew", "ENV1": "additional_env"}
+				s.EXPECT().Exec(t_helper.SamplePathToScript, expectedEnvVar).Return([]byte("abc"), nil)
 				return s
 			},
 		},
@@ -310,7 +319,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				c.Managed[0].Tokens[0].Hooks[0] = cfg.Hook{
 					Type:  cfg.HookTypeUpdateVar,
 					Retry: 1,
-					Args: map[string]string{
+					Args: map[string]any{
 						"name": t_helper.SampleCICDVar,
 						"path": t_helper.SampleRepoPath,
 						"type": cfg.ManagedTypeRepository,
