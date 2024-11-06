@@ -1,0 +1,29 @@
+- type: personal
+  access_tokens:
+    - name: access_token_renewer_rw
+      hooks:
+        - type: use_token
+        - type: update_var
+          args:
+            name: TOKEN_RW
+            type: repository
+            path: path-to/repo/access-token-renewer
+
+    - name: access_token_renewer_ro
+      hooks:
+        - type: update_var
+          args:
+            name: TOKEN_RO
+            type: repository
+            path: path-to/repo/access-token-renewer
+
+- path: path-to/repo/access-token-renewer
+  type: repository
+  access_tokens:
+    - name: mr_commenter
+      hooks:
+        - type: update_var
+          args:
+            path: path-to/repo/access-token-renewer
+            type: repository
+            name: MR_COMMENTER_TOKEN

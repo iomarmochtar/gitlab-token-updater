@@ -10,10 +10,6 @@ This app addresses the following challenges:
 
 ## Installation
 
-### Compiled
-
-Go to the releases page for a compiled version specific to your OS and architecture.
-
 ### Docker
 
 Assuming your main configuration file is located in the current directory:
@@ -21,6 +17,10 @@ Assuming your main configuration file is located in the current directory:
 ```bash
 docker run -v `./config.yml:/tmp/config.yml` -it --rm iomarmochtar/gitlab-token-updater:latest -c /tmp/config.yml
 ```
+
+### Compiled
+
+Go to the releases page for a compiled version specific to your OS and architecture.
 
 ### Source Build
 
@@ -96,14 +96,15 @@ Consist of YAML formatted content, see the sample one in [sample-config.yml](./e
 | `.manage_tokens[]`                                     | List of managed access token                                                                                |                       |               `yes`               |
 | `.manage_tokens[].type`                                | Type of access token (`repository`, `group`, or `personal`)                                                 |                       |               `yes`               |
 | `.manage_tokens[].path`                                | Repository or group location                                                                                |                       | Required for `repository`/`group` |
+| `.manage_tokens[].include`                             | Include external `manage_token` configuration, the path is relative to main config file                     |                       |               `no`                |
 | `.manage_tokens[].access_tokens[]`                     | List of managed access tokens                                                                               |                       |               `yes`               |
 | `.manage_tokens[].access_tokens[].name`                | Name of access token                                                                                        |                       |               `yes`               |
-| `.manage_tokens[].access_tokens[].renew_before`        | Specific renewal period, overriding `.default_renew_before`                                |                       |               `no`                |
-| `.manage_tokens[].access_tokens[].expiry_after_rotate` | Specific expiration period, overriding `.default_expiry_after_rotate`                         |                       |               `no`                |
-| `.manage_tokens[].access_tokens[].hooks[]`             | List of actions for each hook                                                  |                       |               `no`                |
-| `.manage_tokens[].access_tokens[].hooks[].type`        | Hook type (`update_var`, `exec_cmd`, `use_token`)                       |                       |               `yes`               |
-| `.manage_tokens[].access_tokens[].hooks[].retry`       | Hook retry count, overriding `.default_hook_retry`                                             |                       |               `no`                |
-| `.manage_tokens[].access_tokens[].hooks[].args`        | Arguments for each hook type (see details below)                                          |                       |  *some hook type is not required  |
+| `.manage_tokens[].access_tokens[].renew_before`        | Specific renewal period, overriding `.default_renew_before`                                                 |                       |               `no`                |
+| `.manage_tokens[].access_tokens[].expiry_after_rotate` | Specific expiration period, overriding `.default_expiry_after_rotate`                                       |                       |               `no`                |
+| `.manage_tokens[].access_tokens[].hooks[]`             | List of actions for each hook                                                                               |                       |               `no`                |
+| `.manage_tokens[].access_tokens[].hooks[].type`        | Hook type (`update_var`, `exec_cmd`, `use_token`)                                                           |                       |               `yes`               |
+| `.manage_tokens[].access_tokens[].hooks[].retry`       | Hook retry count, overriding `.default_hook_retry`                                                          |                       |               `no`                |
+| `.manage_tokens[].access_tokens[].hooks[].args`        | Arguments for each hook type (see details below)                                                            |                       |  *some hook type is not required  |
 
 **Notes:**
 

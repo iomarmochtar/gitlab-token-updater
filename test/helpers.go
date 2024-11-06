@@ -2,6 +2,9 @@
 package test
 
 import (
+	"os"
+	"path"
+	"runtime"
 	"time"
 
 	cfg "github.com/iomarmochtar/gitlab-token-updater/pkg/config"
@@ -114,4 +117,19 @@ func GenConfig(addMTs []cfg.ManagedToken, addTks []cfg.AccessToken, addHks []cfg
 	c.Managed = GenManageTokens(addMTs, addTks, addHks)
 	c.Token = SampleAccessToken
 	return c
+}
+
+func FixturePath(locs ...string) string {
+	//nolint:dogsled
+	_, filename, _, _ := runtime.Caller(0)
+	curDir := path.Dir(filename)
+	return path.Join(append([]string{curDir, "fixtures"}, locs...)...)
+}
+
+func ReadFixture(locs ...string) []byte {
+	data, err := os.ReadFile(FixturePath(locs...))
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
