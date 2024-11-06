@@ -19,13 +19,13 @@ var (
 	SamplePathToScript   = "./path/to/script.sh"
 	SampleHookExecScript = cfg.Hook{
 		Type: cfg.HookTypeExecCMD,
-		Args: map[string]string{
+		Args: map[string]any{
 			"path": SamplePathToScript,
 		},
 	}
 	SampleHookUpdateVarRepo = cfg.Hook{
 		Type: cfg.HookTypeUpdateVar,
-		Args: map[string]string{
+		Args: map[string]any{
 			"name": SampleCICDVar,
 			"path": SampleRepoPath,
 			"type": cfg.ManagedTypeRepository,
@@ -33,7 +33,7 @@ var (
 	}
 	SampleHookUpdateVarGroup = cfg.Hook{
 		Type: cfg.HookTypeUpdateVar,
-		Args: map[string]string{
+		Args: map[string]any{
 			"name": SampleCICDVar,
 			"path": SampleGroupPath,
 			"type": cfg.ManagedTypeGroup,

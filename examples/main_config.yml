@@ -17,6 +17,9 @@ manage_tokens:
             retry: 2
             args:
               path: ./scripts/update_secret_manager.sh
+              env:
+                GCP_PROJECT: integration-proj
+                SECRET_ID: integration1
 
       - name: monitoring_purpose
         expiry_after_rotate: 3M

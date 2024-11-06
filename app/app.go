@@ -137,8 +137,9 @@ func (g GitlabTokenUpdater) execHook(hk cfg.Hook, newToken string) (err error) {
 		if g.dryRun {
 			return g.sh.FileMustExists(args.Path)
 		}
+		args.EnvVar[injectEnvVarShellExec] = newToken
 
-		results, err := g.sh.Exec(args.Path, map[string]string{injectEnvVarShellExec: newToken})
+		results, err := g.sh.Exec(args.Path, args.EnvVar)
 		log.Debug().Msgf("script execution results %s", string(results))
 		return err
 	}

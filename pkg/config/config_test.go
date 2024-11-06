@@ -14,13 +14,13 @@ import (
 var (
 	sampleHookExecScript = c.Hook{
 		Type: c.HookTypeExecCMD,
-		Args: map[string]string{
+		Args: map[string]any{
 			"path": "./path/to/script.sh",
 		},
 	}
 	sampleHookUpdateVar = c.Hook{
 		Type: c.HookTypeUpdateVar,
-		Args: map[string]string{
+		Args: map[string]any{
 			"name": "SOME_VAR",
 			"path": "/path/to/repo",
 			"type": c.ManagedTypeRepository,
@@ -287,7 +287,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 								Hooks: []c.Hook{
 									{
 										Type: c.HookTypeUpdateVar,
-										Args: map[string]string{
+										Args: map[string]any{
 											"name": "SOME_VAR",
 											"path": "/path/to/repo",
 											"type": "wrong_type",
@@ -317,7 +317,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 								Hooks: []c.Hook{
 									{
 										Type: c.HookTypeUpdateVar,
-										Args: map[string]string{
+										Args: map[string]any{
 											"path": "/some/path",
 										},
 									},
@@ -344,7 +344,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 								Hooks: []c.Hook{
 									{
 										Type: c.HookTypeUpdateVar,
-										Args: map[string]string{
+										Args: map[string]any{
 											"name": "CI_VAR",
 										},
 									},
@@ -449,7 +449,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 								Hooks: []c.Hook{
 									{
 										Type: c.HookTypeExecCMD,
-										Args: map[string]string{
+										Args: map[string]any{
 											"path": "./some/path",
 										},
 									},

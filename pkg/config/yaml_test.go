@@ -42,6 +42,8 @@ func TestReadYAMLConfigFile(t *testing.T) {
 				assert.Equal(t, "glpat-abc", cfg.Token)
 				assert.Equal(t, 4, len(cfg.Managed))
 				assert.Equal(t, uint8(2), cfg.Managed[0].Tokens[0].Hooks[1].Retry)
+				hookExecCmdCheck := cfg.Managed[0].Tokens[0].Hooks[1].ExecCMDArgs()
+				assert.Equal(t, "integration-proj", hookExecCmdCheck.EnvVar["GCP_PROJECT"])
 			},
 		},
 		"err: validation check": {
