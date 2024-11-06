@@ -14,8 +14,9 @@ manage_tokens:
               name: AUTOMATION_TOKEN
 
           - type: exec_cmd
+            retry: 2
             args:
-              path: ./scripts/trigger_pipeline_to_update_k8s_secret.py
+              path: ./scripts/update_secret_manager.sh
 
       - name: monitoring_purpose
         expiry_after_rotate: 3M
@@ -29,24 +30,6 @@ manage_tokens:
             args:
               path: path/to/repo
               type: repository
-              name: MR_COMMECTER_TOKEN
+              name: MR_COMMENTER_TOKEN
 
-# sample self updating currently used token
-  - type: personal
-    access_tokens:
-      - name: access_token_renewer_rw
-        hooks:
-          - type: use_token
-          - type: update_var
-            args:
-              name: TOKEN_RW
-              type: repository
-              path: path-to/repo/access-token-renewer
-
-      - name: access_token_renewer_ro
-        hooks:
-          - type: update_var
-            args:
-              name: TOKEN_RO
-              type: repository
-              path: path-to/repo/access-token-renewer
+  - include: internal.yml

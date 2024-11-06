@@ -3,7 +3,7 @@ stages:
   - execute
 
 variables:
-  CONF: sample-config.yml
+  CONF: main_config.yml
   EXTRA_ARGS: ""
   TEST_CONF_ARGS: "--dry-run --force --debug"
   EXEC: "gitlab-token-updater -c ${CONF} ${EXTRA_ARGS}"

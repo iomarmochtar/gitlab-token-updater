@@ -1,0 +1,7 @@
+token: ${TEST_GL_TOKEN}
+default_expiry_after_rotate: 2M
+manage_tokens:
+  - path: path/to/repo
+    type: repository
+    access_tokens:
+      - name: TF IaC`

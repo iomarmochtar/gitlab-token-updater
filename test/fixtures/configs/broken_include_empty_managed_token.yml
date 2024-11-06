@@ -1,0 +1,14 @@
+token: glpat-abc
+default_renew_before: 2M
+default_hook_retry: 1
+manage_tokens:
+  - path: path/to/repo
+    type: repository
+    access_tokens:
+      - name: TF IaC
+        renew_before: 3M
+        hooks:
+          - type: exec_cmd
+            args:
+              path: ./path/to/cmd
+  - include: empty.yml

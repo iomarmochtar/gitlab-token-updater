@@ -31,7 +31,7 @@ var (
 func genSampleManagedTokens() []c.ManagedToken {
 	return []c.ManagedToken{
 		{
-			Path: "/path/go/repo",
+			Path: "/path/to/repo",
 			Type: c.ManagedTypeRepository,
 			Tokens: []c.AccessToken{
 				{
@@ -123,6 +123,37 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 				return cfg
 			},
 			ExpectedErr: c.ErrValidationManagedEmptyPath,
+		},
+		"duplicated managed token": {
+			Cfg: func() *c.Config {
+				cfg := c.NewConfig()
+				cfg.Token = "glpat-abc"
+				cfg.Managed = genSampleManagedTokens()
+				cfg.Managed = append(cfg.Managed, []c.ManagedToken{
+					{
+						Path: "/path/to/zrepo",
+						Type: c.ManagedTypeRepository,
+						Ref:  "main.yml",
+						Tokens: []c.AccessToken{
+							{
+								Name: "TF_IaC",
+							},
+						},
+					},
+					{
+						Path: "/path/to/zrepo",
+						Type: c.ManagedTypeRepository,
+						Ref:  "includes/another.yml",
+						Tokens: []c.AccessToken{
+							{
+								Name: "TF_IaC",
+							},
+						},
+					},
+				}...)
+				return cfg
+			},
+			ExpectedErr: c.ErrValidationManagedDuplicatedDefinition,
 		},
 		"invalid type": {
 			Cfg: func() *c.Config {

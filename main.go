@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -49,6 +51,10 @@ func New() *cli.App {
 				EnvVars: []string{"DEBUG_MODE"},
 			},
 			&cli.BoolFlag{
+				Name:  "log-json",
+				Usage: "Set logging output as JSON formatted",
+			},
+			&cli.BoolFlag{
 				Name:    "force",
 				Aliases: []string{"f"},
 				Usage:   "all token will be updated regardless the specified config",
@@ -75,7 +81,9 @@ func New() *cli.App {
 				zerolog.SetGlobalLevel(zerolog.DebugLevel)
 				zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 			}
-			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+			if !ctx.Bool("log-json") {
+				log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+			}
 
 			return nil
 		},
@@ -85,12 +93,7 @@ func New() *cli.App {
 			dryRun := ctx.Bool("dry-run")
 			strictMode := ctx.Bool("strict")
 
-			yamlContent, err := os.ReadFile(filepath.Clean(configPath))
-			if err != nil {
-				return err
-			}
-
-			config, err := cfg.ReadYAMLConfig(yamlContent)
+			config, err := cfg.ReadYAMLConfigFile(filepath.Clean(configPath))
 			if err != nil {
 				return err
 			}
@@ -123,10 +126,15 @@ func New() *cli.App {
 	return cmd
 }
 
+// errHandler cleanup new lined character as results in joining some errors then exit with code 1
+func errHandler(err error) {
+	errMsg := strings.ReplaceAll(err.Error(), "\n", "; ")
+	log.Fatal().Err(errors.New(errMsg)).Msg("execution failed")
+}
+
 func main() {
 	a := New()
 	if err := a.Run(os.Args); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		errHandler(err)
 	}
 }

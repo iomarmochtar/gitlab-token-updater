@@ -46,6 +46,7 @@ var (
 	ErrValidationManagedEmptyTokenList           = errors.New("empty managed token list")
 	ErrValidationManagedInvalidRenewBefore       = errors.New("invalid renew before value")
 	ErrValidationManagedInvalidExpiryAfterRotate = errors.New("invalid expiry after rotate value")
+	ErrValidationManagedDuplicatedDefinition     = errors.New("duplicated manage token found")
 	ErrValidationTokenEmptyName                  = errors.New("empty token name")
 	ErrValidationHookInvalidType                 = fmt.Errorf("invalid hook type, the valid one are %s", strings.Join(HookTypeList, ","))
 	ErrValidationHookUpdateVarMissingName        = fmt.Errorf("missing arg name in %s hook", HookTypeUpdateVar)
@@ -158,6 +159,7 @@ func (at AccessToken) validate() error {
 type ManagedToken struct {
 	Path   string        `yaml:"path"`
 	Type   string        `yaml:"type"`
+	Ref    string        `yaml:"include"`
 	Tokens []AccessToken `yaml:"access_tokens"`
 }
 
@@ -195,6 +197,14 @@ func (c Config) DefaultExpiryAfterRotateDuration() (time.Duration, error) {
 	return durationParse(c.DefaultExpiryAfterRotate)
 }
 
+// appendReference adding more context to returned error
+func appendErrReferences(err error, references []string) error {
+	for _, errRef := range references {
+		err = errors.Join(err, errors.New(errRef))
+	}
+	return err
+}
+
 func (c Config) validate() (err error) {
 	if c.Host == "" {
 		return ErrValidationEmptyHost
@@ -217,36 +227,76 @@ func (c Config) validate() (err error) {
 	}
 
 	hookUseTokenUsed := false
+	// track sequence number of managed_token
+	managedRefSeq := make(map[string]int)
+	// track the used manage token
+	managedTrackUsed := make(map[string]string)
+
 	for idx := range c.Managed {
 		managed := c.Managed[idx]
+		var errRefsManage []string
+		if managed.Ref != "" {
+			errRefsManage = append(errRefsManage, fmt.Sprintf("reference: %s", managed.Ref))
+		}
+
+		if _, exists := managedRefSeq[managed.Ref]; !exists {
+			managedRefSeq[managed.Ref] = 0
+		}
+		managedRefSeq[managed.Ref]++
+		info := fmt.Sprintf("managed_token seq num: %d", managedRefSeq[managed.Ref])
+		if managed.Type == ManagedTypePersonal {
+			info = fmt.Sprintf("%s (type: %s)", info, ManagedTypePersonal)
+		} else {
+			info = fmt.Sprintf("%s (type: %s, path: %s)", info, managed.Type, managed.Path)
+		}
+		errRefsManage = append(errRefsManage, info)
+
+		managedID := fmt.Sprintf("mtkn_%s_%s", managed.Type, managed.Path)
+		prevManageRef, exists := managedTrackUsed[managedID]
+		if !exists {
+			managedTrackUsed[managedID] = managed.Ref
+		} else {
+			err = ErrValidationManagedDuplicatedDefinition
+			if prevManageRef != "" {
+				err = errors.Join(err, fmt.Errorf("previously defined at %s", prevManageRef))
+			}
+
+			return appendErrReferences(err, errRefsManage)
+		}
+
 		if err = managed.validate(); err != nil {
-			return err
+			return appendErrReferences(err, errRefsManage)
 		}
 
 		for tkIdx := range managed.Tokens {
 			tkn := managed.Tokens[tkIdx]
 			num := tkIdx + 1
+			//nolint
+			errRefTkn := append(errRefsManage, fmt.Sprintf("access_token seq num: %d (name: %s)", num, tkn.Name))
 			if err = tkn.validate(); err != nil {
-				return errors.Join(err, fmt.Errorf("num: %d", num))
+				return appendErrReferences(err, errRefTkn)
 			}
 
 			for hkIdx := range managed.Tokens[tkIdx].Hooks {
 				hook := managed.Tokens[tkIdx].Hooks[hkIdx]
+				//nolint
+				errRefsHook := append(errRefTkn, fmt.Sprintf("hook seq num: %d", hkIdx+1))
+
 				if err = hook.validate(); err != nil {
-					return err
+					return appendErrReferences(err, errRefsHook)
 				}
 
 				// use_token hook validations
 				if hook.Type == HookTypeUseToken {
 					if managed.Type != ManagedTypePersonal {
-						return ErrValidationHookUseTokenNotByPersonalType
+						return appendErrReferences(ErrValidationHookUseTokenNotByPersonalType, errRefsHook)
 					}
 					if hookUseTokenUsed {
-						return ErrValidationHookUseTokenAlreadyUse
+						return appendErrReferences(ErrValidationHookUseTokenAlreadyUse, errRefsHook)
 					}
 
 					if hkIdx != 0 {
-						return ErrValidationHookUseTokenNotFirstSeq
+						return appendErrReferences(ErrValidationHookUseTokenNotFirstSeq, errRefsHook)
 					}
 
 					hookUseTokenUsed = true
