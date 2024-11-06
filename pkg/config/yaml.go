@@ -46,11 +46,7 @@ func expandConfig(cfg *Config, configPath string) error {
 		}
 	}
 
-	log.Debug().Interface("result", tmpManagedTokens).Int("total", len(tmpManagedTokens)).Msg("replacing manage token config")
 	cfg.Managed = tmpManagedTokens
-	for x, y := range tmpManagedTokens {
-		log.Debug().Interface("datanya", y).Int("sequence", x).Msg("see me")
-	}
 	return nil
 }
 
