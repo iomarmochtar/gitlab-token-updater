@@ -90,7 +90,7 @@ func (h Hook) validate() error {
 			return ErrValidationHookUpdateVarMissingPath
 		}
 
-		if h.Args["type"] != nil && !contains(ManagedTypeList, h.Args["type"].(string)) {
+		if h.Args["type"] != nil && !contains(ManagedTypeList, h.getValueOrEmpty("type")) {
 			return ErrValidationHookUpdateVarInvalidType
 		}
 	} else if h.Type == HookTypeExecCMD {
@@ -120,7 +120,7 @@ func (h Hook) getValueOrEmpty(key string) string {
 // ExecCMDArgs return the list of argument in execution hook exec_cmd
 func (h Hook) ExecCMDArgs() HookExecScript {
 	execArgs := HookExecScript{
-		Path: h.Args["path"].(string),
+		Path: h.getValueOrEmpty("path"),
 	}
 	execArgs.EnvVar = make(map[string]string)
 
