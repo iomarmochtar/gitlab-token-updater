@@ -111,13 +111,13 @@ Consist of YAML formatted content, see the sample one in [sample-config.yml](./e
 - `.host` and `.token` values can use environment variables in `${THIS_IS_VAR}` format.
 - Accepted duration suffixes: `d` (day), `M` (month), `Y` (year).
 - Required arguments for hook types:
-  - `update_var`: `.type` (repository or group), `.path` (location), and `name` (variable name).
+  - `update_var`: `.type` (repository or group), `.path` (location), and `name` (variable name). if `.type` and `.path` are not defined, then it will use the same as in it's parent (manage token config).
   - `exec_cmd`: `.path` (location of executable) with `GL_NEW_TOKEN` as injected environment variable for the new token, you can pass another env variables using `.env`.
   - `use_token`: not requiring any arguments, it will uses the new token in the current API call; can only be set once as the first hook.
 
 ## Development
 
-To avoid "polluting" your local environment and to use a consistent development setup, use [devcontainer](https://containers.dev/), which is included in this repository and supports VS Code.
+To avoid "polluting" your local environment and to use a consistent development setup, use [devcontainer](https://containers.dev/), which is included in this repository and a built in feature in Visual Studio Code.
 
 ## Misc
 
