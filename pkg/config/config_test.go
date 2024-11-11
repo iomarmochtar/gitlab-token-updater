@@ -48,6 +48,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 	testCases := map[string]struct {
 		Cfg         func() *c.Config
 		ExpectedErr error
+		ExtraChecks func(*testing.T, *c.Config)
 	}{
 		"ok": {
 			Cfg: func() *c.Config {
@@ -302,7 +303,38 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 			},
 			ExpectedErr: c.ErrValidationHookUpdateVarInvalidType,
 		},
-
+		"hook update_var automatic set type and path as same as managed token": {
+			Cfg: func() *c.Config {
+				cfg := c.NewConfig()
+				cfg.Token = "abc"
+				cfg.Managed = []c.ManagedToken{
+					{
+						Path: "/path/to/repo",
+						Type: c.ManagedTypeRepository,
+						Tokens: []c.AccessToken{
+							{
+								Name: "TF IaC",
+								Hooks: []c.Hook{
+									{
+										Type: c.HookTypeUpdateVar,
+										Args: map[string]any{
+											"name": "CI_VAR",
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return cfg
+			},
+			ExtraChecks: func(t *testing.T, cfg *c.Config) {
+				hkArg := cfg.Managed[0].Tokens[0].Hooks[0].UpdateVarArgs()
+				assert.Equal(t, "CI_VAR", hkArg.Name)
+				assert.Equal(t, "/path/to/repo", hkArg.Path)
+				assert.Equal(t, c.ManagedTypeRepository, hkArg.Type)
+			},
+		},
 		"hook update_var missing name": {
 			Cfg: func() *c.Config {
 				cfg := c.NewConfig()
@@ -346,6 +378,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 										Type: c.HookTypeUpdateVar,
 										Args: map[string]any{
 											"name": "CI_VAR",
+											"type": "group",
 										},
 									},
 								},
@@ -472,6 +505,9 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 			cfg := tc.Cfg()
 			res := cfg.InitValues()
 			assert.ErrorIs(t, res, tc.ExpectedErr, fmt.Sprintf("expecting returning error %v ~> %s", tc.ExpectedErr, res))
+			if cfg != nil && tc.ExtraChecks != nil {
+				tc.ExtraChecks(t, cfg)
+			}
 		})
 	}
 }

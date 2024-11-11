@@ -31,8 +31,6 @@ manage_tokens:
         hooks:
           - type: update_var
             args:
-              path: path/to/repo
-              type: repository
               name: MR_COMMENTER_TOKEN
 
   - include: internal.yml

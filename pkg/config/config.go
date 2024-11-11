@@ -90,7 +90,7 @@ func (h Hook) validate() error {
 			return ErrValidationHookUpdateVarMissingPath
 		}
 
-		if h.Args["type"] != nil && !contains(ManagedTypeList, h.Args["type"].(string)) {
+		if h.Args["type"] != nil && !contains(ManagedTypeList, h.getValueOrEmpty("type")) {
 			return ErrValidationHookUpdateVarInvalidType
 		}
 	} else if h.Type == HookTypeExecCMD {
@@ -103,16 +103,24 @@ func (h Hook) validate() error {
 
 func (h Hook) UpdateVarArgs() HookUpdateVar {
 	return HookUpdateVar{
-		Name: h.Args["name"].(string),
-		Path: h.Args["path"].(string),
-		Type: h.Args["type"].(string),
+		Name: h.getValueOrEmpty("name"),
+		Path: h.getValueOrEmpty("path"),
+		Type: h.getValueOrEmpty("type"),
 	}
+}
+
+func (h Hook) getValueOrEmpty(key string) string {
+	argVal := h.Args[key]
+	if argVal == nil {
+		return ""
+	}
+	return argVal.(string)
 }
 
 // ExecCMDArgs return the list of argument in execution hook exec_cmd
 func (h Hook) ExecCMDArgs() HookExecScript {
 	execArgs := HookExecScript{
-		Path: h.Args["path"].(string),
+		Path: h.getValueOrEmpty("path"),
 	}
 	execArgs.EnvVar = make(map[string]string)
 
@@ -347,6 +355,15 @@ func (c *Config) InitValues() error {
 			for hkIdx := range tkn.Hooks {
 				if tkn.Hooks[hkIdx].Retry == 0 {
 					c.Managed[idx].Tokens[tkIdx].Hooks[hkIdx].Retry = c.DefaultHookRetry
+				}
+
+				// set path and type with the same as configured in managed config if both of them is not set
+				if tkn.Hooks[hkIdx].Type == HookTypeUpdateVar && managed.Type != ManagedTypePersonal {
+					hkUpdateVarargs := tkn.Hooks[hkIdx].UpdateVarArgs()
+					if hkUpdateVarargs.Path == "" && hkUpdateVarargs.Type == "" {
+						c.Managed[idx].Tokens[tkIdx].Hooks[hkIdx].Args["path"] = managed.Path
+						c.Managed[idx].Tokens[tkIdx].Hooks[hkIdx].Args["type"] = managed.Type
+					}
 				}
 			}
 		}
