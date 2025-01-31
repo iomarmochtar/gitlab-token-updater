@@ -1,3 +1,10 @@
+# 0.3.0
+
+### Features and enhancements
+
+- [config] set hook arguments type and path config for `update_var`
+
+
 # 0.2.0
 
 ### Features and enhancements
