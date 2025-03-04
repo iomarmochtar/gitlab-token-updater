@@ -12,12 +12,15 @@ import (
 )
 
 var (
-	SampleAccessToken    = "glpat-abc"
-	SampleRepoPath       = "/path/to/repo"
-	SampleGroupPath      = "/path/to/group"
-	SampleCICDVar        = "SOME_VAR"
-	SamplePathToScript   = "./path/to/script.sh"
-	SampleHookExecScript = cfg.Hook{
+	SampleAccessToken        = "glpat-abc"
+	SampleRepoPath           = "/path/to/repo"
+	SampleGroupPath          = "/path/to/group"
+	SampleCICDVar            = "SOME_VAR"
+	SampleAccessTokeName     = "MR Handler"
+	SamplePathToScript       = "./path/to/script.sh"
+	SampleAnotherGitlab      = "https://another.gitlab.dev"
+	SampleAnotherGitlabToken = "glpat-another"
+	SampleHookExecScript     = cfg.Hook{
 		Type: cfg.HookTypeExecCMD,
 		Args: map[string]any{
 			"path": SamplePathToScript,

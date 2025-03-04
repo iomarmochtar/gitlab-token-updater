@@ -118,7 +118,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
 				accessTokens := []gl.GitlabAccessToken{
 					{
-						Name:      "MR Handler",
+						Name:      t_helper.SampleAccessTokeName,
 						Type:      gl.GitlabTargetTypeRepo,
 						ID:        123,
 						Path:      t_helper.SampleRepoPath,
@@ -216,7 +216,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
 				accessTokens := []gl.GitlabAccessToken{
 					{
-						Name:      "MR Handler",
+						Name:      t_helper.SampleAccessTokeName,
 						ID:        123,
 						Path:      t_helper.SampleRepoPath,
 						Revoked:   true,
@@ -239,7 +239,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
 				accessTokens := []gl.GitlabAccessToken{
 					{
-						Name:      "MR Handler",
+						Name:      t_helper.SampleAccessTokeName,
 						ID:        123,
 						Path:      t_helper.SampleRepoPath,
 						Active:    false,
@@ -422,8 +422,8 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 						"type":         cfg.ManagedTypeRepository,
 						"name":         t_helper.SampleCICDVar,
 						"path":         t_helper.SampleRepoPath,
-						"gitlab":       "https://another.gitlab.dev",
-						"gitlab_token": "glpat-another",
+						"gitlab":       t_helper.SampleAnotherGitlab,
+						"gitlab_token": t_helper.SampleAnotherGitlabToken,
 					},
 				}
 				return c
@@ -439,7 +439,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
 				g.EXPECT().RotateRepoToken(t_helper.SampleRepoPath, 123, *t_helper.GenTime("2024-07-27")).Return(newToken, nil)
 				g.EXPECT().UpdateGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar, newToken).Return(nil).Times(1)
-				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(anotherGL, nil).Times(1)
+				g.EXPECT().InitGitlab(t_helper.SampleAnotherGitlab, t_helper.SampleAnotherGitlabToken).Return(anotherGL, nil).Times(1)
 				g.EXPECT().InitGitlab("https://another2.gitlab.dev", "glpat-another2").Return(anotherGL2, nil).Times(1)
 
 				// updating each target
@@ -477,8 +477,8 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 						"type":         cfg.ManagedTypeRepository,
 						"name":         t_helper.SampleCICDVar,
 						"path":         t_helper.SampleRepoPath,
-						"gitlab":       "https://another.gitlab.dev",
-						"gitlab_token": "glpat-another",
+						"gitlab":       t_helper.SampleAnotherGitlab,
+						"gitlab_token": t_helper.SampleAnotherGitlabToken,
 					},
 				}
 				return c
@@ -492,7 +492,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
 				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
 				g.EXPECT().GetGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar).Return(&gl.GitlabCICDVar{}, nil).Times(1)
-				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(anotherGL, nil).Times(1)
+				g.EXPECT().InitGitlab(t_helper.SampleAnotherGitlab, t_helper.SampleAnotherGitlabToken).Return(anotherGL, nil).Times(1)
 				g.EXPECT().InitGitlab("https://another2.gitlab.dev", "glpat-another2").Return(anotherGL2, nil).Times(1)
 
 				// updating each target
@@ -514,8 +514,8 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 						"type":         cfg.ManagedTypeRepository,
 						"name":         t_helper.SampleCICDVar,
 						"path":         t_helper.SampleRepoPath,
-						"gitlab":       "https://another.gitlab.dev",
-						"gitlab_token": "glpat-another",
+						"gitlab":       t_helper.SampleAnotherGitlab,
+						"gitlab_token": t_helper.SampleAnotherGitlabToken,
 					},
 				}
 				return c
@@ -528,7 +528,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
 				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
 				g.EXPECT().RotateRepoToken(t_helper.SampleRepoPath, 123, *t_helper.GenTime("2024-07-27")).Return(newToken, nil)
-				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(nil, fmt.Errorf("got an error during initiating Gitlab")).Times(1)
+				g.EXPECT().InitGitlab(t_helper.SampleAnotherGitlab, t_helper.SampleAnotherGitlabToken).Return(nil, fmt.Errorf("got an error during initiating Gitlab")).Times(1)
 
 				return g
 			},
