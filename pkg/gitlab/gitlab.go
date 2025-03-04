@@ -43,6 +43,7 @@ type GitlabAccessToken struct {
 // GitlabAPI spec for the used Gitlab API
 type GitlabAPI interface {
 	Auth(token string) error
+	InitGitlab(baseURL, token string) (GitlabAPI, error)
 	GetRepoVar(path string, varName string) (*GitlabCICDVar, error)
 	GetGroupVar(path string, varName string) (*GitlabCICDVar, error)
 	UpdateGroupVar(path string, varName string, value string) error
@@ -276,6 +277,11 @@ func (g Gitlab) ListPersonalAccessToken() (pat []GitlabAccessToken, err error) {
 	}
 
 	return pat, nil
+}
+
+// InitGitlab initiating external/another Gitlab instance
+func (g *Gitlab) InitGitlab(baseURL, token string) (GitlabAPI, error) {
+	return NewGitlabAPI(baseURL, token)
 }
 
 // NewGitlabAPI returning gitlab API object

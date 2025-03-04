@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 		dryRun         bool
 		strict         bool
 		currentTime    *time.Time
+		envVars        map[string]string
 		expectedErrMsg string
 	}{
 		"success: simple scenario": {
@@ -48,6 +50,9 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			},
 		},
 		"update access token that will expired in 1 month ahead and execute all hooks": {
+			envVars: map[string]string{
+				"SUBS1": "value1",
+			},
 			config: func() *cfg.Config {
 				anotherManageTokens := t_helper.GenManageTokens(nil, nil, nil)
 				anotherManageTokens[0].Type = cfg.ManagedTypeGroup
@@ -61,6 +66,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 						"path": t_helper.SamplePathToScript,
 						"env": map[any]any{
 							"ENV1": "additional_env",
+							"ENV2": "subs-${SUBS1}",
 						},
 					},
 				})
@@ -84,7 +90,7 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			},
 			mockShell: func(ctrl *gomock.Controller) *sm.MockShell {
 				s := sm.NewMockShell(ctrl)
-				expectedEnvVar := map[string]string{"GL_NEW_TOKEN": "glpat-newnew", "ENV1": "additional_env"}
+				expectedEnvVar := map[string]string{"GL_NEW_TOKEN": "glpat-newnew", "ENV1": "additional_env", "ENV2": "subs-value1"}
 				s.EXPECT().Exec(t_helper.SamplePathToScript, expectedEnvVar).Return([]byte("abc"), nil)
 				return s
 			},
@@ -225,6 +231,29 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				return nil
 			},
 		},
+		"inactive access token will be skipped": {
+			config: func() *cfg.Config {
+				return t_helper.GenConfig(nil, nil, nil)
+			},
+			currentTime: t_helper.GenTime("2024-04-28"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				accessTokens := []gl.GitlabAccessToken{
+					{
+						Name:      "MR Handler",
+						ID:        123,
+						Path:      t_helper.SampleRepoPath,
+						Active:    false,
+						ExpiresAt: t_helper.GenTime("2024-05-01"),
+					},
+				}
+				g := gm.NewMockGitlabAPI(ctrl)
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+		},
 		"dry_run: no any modify execution will be made": {
 			config: func() *cfg.Config {
 				anotherManageTokens := t_helper.GenManageTokens(nil, nil, nil)
@@ -264,6 +293,31 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 			},
 			strict:         true,
 			expectedErrMsg: "an error while list access token",
+		},
+		"strict: no access token found": {
+			// in the strict mode, if the access token not found then it wouldn't continue
+			config: func() *cfg.Config {
+				return t_helper.GenConfig(nil, nil, nil)
+			},
+			currentTime: t_helper.GenTime("2024-04-28"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				g := gm.NewMockGitlabAPI(ctrl)
+				accessTokens := []gl.GitlabAccessToken{{
+					Name:      "",
+					Type:      gl.GitlabTargetTypeRepo,
+					ID:        100,
+					Active:    true,
+					Revoked:   false,
+					ExpiresAt: t_helper.GenTime("2024-05-01"),
+				}}
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+			strict:         true,
+			expectedErrMsg: "token MR Handler in /path/to/repo is not exists",
 		},
 		"strict: in dry run mode hook exec cmd will check for script existance": {
 			config: func() *cfg.Config {
@@ -344,6 +398,145 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 				return nil
 			},
 		},
+		"hook: the CICD var is located in external Gitlab instance": {
+			config: func() *cfg.Config {
+				hookInternal := []cfg.Hook{
+					t_helper.SampleHookUpdateVarGroup,
+					{
+						Type: cfg.HookTypeUpdateVar,
+						Args: map[string]any{
+							"type":         cfg.ManagedTypeGroup,
+							"name":         t_helper.SampleCICDVar,
+							"path":         t_helper.SampleGroupPath,
+							"gitlab":       "https://another2.gitlab.dev",
+							"gitlab_token": "glpat-another2",
+						},
+					},
+				}
+				c := t_helper.GenConfig(nil, nil, hookInternal)
+
+				// set in the first hook as indicating the Gitlab api caller is switched to another instance
+				c.Managed[0].Tokens[0].Hooks[0] = cfg.Hook{
+					Type: cfg.HookTypeUpdateVar,
+					Args: map[string]any{
+						"type":         cfg.ManagedTypeRepository,
+						"name":         t_helper.SampleCICDVar,
+						"path":         t_helper.SampleRepoPath,
+						"gitlab":       "https://another.gitlab.dev",
+						"gitlab_token": "glpat-another",
+					},
+				}
+				return c
+			},
+			currentTime: t_helper.GenTime("2024-04-28"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				newToken := "glpat-newnew"
+				g := gm.NewMockGitlabAPI(ctrl)
+				anotherGL := gm.NewMockGitlabAPI(ctrl)
+				anotherGL2 := gm.NewMockGitlabAPI(ctrl)
+
+				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				g.EXPECT().RotateRepoToken(t_helper.SampleRepoPath, 123, *t_helper.GenTime("2024-07-27")).Return(newToken, nil)
+				g.EXPECT().UpdateGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar, newToken).Return(nil).Times(1)
+				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(anotherGL, nil).Times(1)
+				g.EXPECT().InitGitlab("https://another2.gitlab.dev", "glpat-another2").Return(anotherGL2, nil).Times(1)
+
+				// updating each target
+				anotherGL.EXPECT().UpdateRepoVar(t_helper.SampleRepoPath, t_helper.SampleCICDVar, newToken).Return(nil).Times(1)
+				anotherGL2.EXPECT().UpdateGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar, newToken).Return(nil).Times(1)
+
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+		},
+		"hook: the CICD var is located in external Gitlab instance in dry run mode": {
+			dryRun: true,
+			config: func() *cfg.Config {
+				hookInternal := []cfg.Hook{
+					t_helper.SampleHookUpdateVarGroup,
+					{
+						Type: cfg.HookTypeUpdateVar,
+						Args: map[string]any{
+							"type":         cfg.ManagedTypeGroup,
+							"name":         t_helper.SampleCICDVar,
+							"path":         t_helper.SampleGroupPath,
+							"gitlab":       "https://another2.gitlab.dev",
+							"gitlab_token": "glpat-another2",
+						},
+					},
+				}
+				c := t_helper.GenConfig(nil, nil, hookInternal)
+
+				// set in the first hook as indicating the Gitlab api caller is switched to another instance
+				c.Managed[0].Tokens[0].Hooks[0] = cfg.Hook{
+					Type: cfg.HookTypeUpdateVar,
+					Args: map[string]any{
+						"type":         cfg.ManagedTypeRepository,
+						"name":         t_helper.SampleCICDVar,
+						"path":         t_helper.SampleRepoPath,
+						"gitlab":       "https://another.gitlab.dev",
+						"gitlab_token": "glpat-another",
+					},
+				}
+				return c
+			},
+			currentTime: t_helper.GenTime("2024-04-28"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				g := gm.NewMockGitlabAPI(ctrl)
+				anotherGL := gm.NewMockGitlabAPI(ctrl)
+				anotherGL2 := gm.NewMockGitlabAPI(ctrl)
+
+				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				g.EXPECT().GetGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar).Return(&gl.GitlabCICDVar{}, nil).Times(1)
+				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(anotherGL, nil).Times(1)
+				g.EXPECT().InitGitlab("https://another2.gitlab.dev", "glpat-another2").Return(anotherGL2, nil).Times(1)
+
+				// updating each target
+				anotherGL.EXPECT().GetRepoVar(t_helper.SampleRepoPath, t_helper.SampleCICDVar).Return(&gl.GitlabCICDVar{}, nil).Times(1)
+				anotherGL2.EXPECT().GetGroupVar(t_helper.SampleGroupPath, t_helper.SampleCICDVar).Return(&gl.GitlabCICDVar{}, nil).Times(1)
+
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+		},
+		"hook: failed in update_var with external Gitlab set": {
+			config: func() *cfg.Config {
+				c := t_helper.GenConfig(nil, nil, nil)
+				c.Managed[0].Tokens[0].Hooks[0] = cfg.Hook{
+					Type: cfg.HookTypeUpdateVar,
+					Args: map[string]any{
+						"type":         cfg.ManagedTypeRepository,
+						"name":         t_helper.SampleCICDVar,
+						"path":         t_helper.SampleRepoPath,
+						"gitlab":       "https://another.gitlab.dev",
+						"gitlab_token": "glpat-another",
+					},
+				}
+				return c
+			},
+			currentTime: t_helper.GenTime("2024-04-28"),
+			mockGitlab: func(ctrl *gomock.Controller) *gm.MockGitlabAPI {
+				newToken := "glpat-newnew"
+				g := gm.NewMockGitlabAPI(ctrl)
+
+				accessTokens := []gl.GitlabAccessToken{t_helper.SampleRepoAccessToken}
+				g.EXPECT().ListRepoAccessToken(t_helper.SampleRepoPath).Return(accessTokens, nil)
+				g.EXPECT().RotateRepoToken(t_helper.SampleRepoPath, 123, *t_helper.GenTime("2024-07-27")).Return(newToken, nil)
+				g.EXPECT().InitGitlab("https://another.gitlab.dev", "glpat-another").Return(nil, fmt.Errorf("got an error during initiating Gitlab")).Times(1)
+
+				return g
+			},
+			mockShell: func(*gomock.Controller) *sm.MockShell {
+				return nil
+			},
+			expectedErrMsg: "some error(s) occured during execution",
+		},
 		"manage_personal: using hook use_token": {
 			config: func() *cfg.Config {
 				c := cfg.NewConfig()
@@ -390,6 +583,12 @@ func TestGitlabTokenUpdater_Do(t *testing.T) {
 		t.Run(title, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
+			if tc.envVars != nil {
+				for k, v := range tc.envVars {
+					defer os.Unsetenv(k)
+					_ = os.Setenv(k, v)
+				}
+			}
 
 			config := tc.config()
 			assert.NoError(t, config.InitValues())

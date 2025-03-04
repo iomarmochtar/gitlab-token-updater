@@ -108,12 +108,28 @@ Consist of YAML formatted content, see the sample one in [sample-config.yml](./e
 
 **Notes:**
 
-- `.host` and `.token` values can use environment variables in `${THIS_IS_VAR}` format.
-- Accepted duration suffixes: `d` (day), `M` (month), `Y` (year).
-- Required arguments for hook types:
-  - `update_var`: `.type` (repository or group), `.path` (location), and `name` (variable name). if `.type` and `.path` are not defined, then it will use the same as in it's parent (manage token config).
-  - `exec_cmd`: `.path` (location of executable) with `GL_NEW_TOKEN` as injected environment variable for the new token, you can pass another env variables using `.env`.
-  - `use_token`: not requiring any arguments, it will uses the new token in the current API call; can only be set once as the first hook.
+- the config value can be injected by env variable by using format `${THIS_IS_VAR}` and it's only available in following locations:
+  - `.host`
+  - `.token`
+  - `.manage_tokens[].access_tokens[].hooks[].args` for hook type `update_var`
+  - `.manage_tokens[].access_tokens[].hooks[].args.envs` for hook type `exec_cmd`
+- Known duration suffixes: `d` (day), `M` (month), `Y` (year).
+- hook types with it's available arguments:
+  - `update_var`:
+    - `.name` (required): CICD variable name
+    - `.type` (required): `repository` or `group`
+    - `.path` (required): location of repository or group
+    - `.gitlab`: set this if CICD variable is located in another Gitlab instance
+    - `.gitlab_token`: the token that will be used to another Gitlab instance as in `.gitlab`
+    - misc:
+      - if `.type` and `.path` are not defined, then it will use the same as in it's parent (manage token config)
+      - `.gitlab-token` is required when `.gitlab` configured, and suggested set in env variable
+  - `exec_cmd`:
+    - `.path` (required): location of executable
+    - `.envs`: set the injected environment variable that will be read by the executeable
+    - misc:
+      - the new generated token that read in the executeable is through env variable by name `GL_NEW_TOKEN`
+  - `use_token`: not requiring any arguments, it will uses the new token in the current API call; can only be set once in the first hook sequence.
 
 ## Development
 
