@@ -53,6 +53,7 @@ var (
 	ErrValidationHookUpdateVarMissingPath        = fmt.Errorf("missing arg path in %s hook", HookTypeUpdateVar)
 	ErrValidationHookUpdateVarMissingType        = fmt.Errorf("missing arg type in %s hook", HookTypeUpdateVar)
 	ErrValidationHookUpdateVarInvalidType        = fmt.Errorf("invalid arg type in %s hook, the valid one are %s", HookTypeUpdateVar, strings.Join(ManagedTypeList, ","))
+	ErrValidationHookUpdateMissingGitlabToken    = fmt.Errorf("external gitlab detected but got empty `gitlab_token` parameter")
 	ErrValidationHookExecCMDMissingPath          = fmt.Errorf("missing arg path in %s hook", HookTypeExecCMD)
 	ErrValidationHookUseTokenNotByPersonalType   = fmt.Errorf("can be only use in manage type %s", ManagedTypePersonal)
 	ErrValidationHookUseTokenAlreadyUse          = fmt.Errorf("hook %s can be only use once", HookTypeUseToken)
@@ -60,9 +61,11 @@ var (
 )
 
 type HookUpdateVar struct {
-	Name string
-	Path string
-	Type string
+	Name        string
+	Path        string
+	Type        string
+	Gitlab      string
+	GitlabToken string
 }
 
 type HookExecScript struct {
@@ -82,16 +85,21 @@ func (h Hook) validate() error {
 	}
 
 	if h.Type == HookTypeUpdateVar {
-		if h.Args["name"] == nil {
+		uArgs := h.UpdateVarArgs()
+		if uArgs.Name == "" {
 			return ErrValidationHookUpdateVarMissingName
 		}
 
-		if h.Args["path"] == nil {
+		if uArgs.Path == "" {
 			return ErrValidationHookUpdateVarMissingPath
 		}
 
-		if h.Args["type"] != nil && !contains(ManagedTypeList, h.getValueOrEmpty("type")) {
+		if !contains(ManagedTypeList, uArgs.Type) {
 			return ErrValidationHookUpdateVarInvalidType
+		}
+
+		if uArgs.Gitlab != "" && uArgs.GitlabToken == "" {
+			return ErrValidationHookUpdateMissingGitlabToken
 		}
 	} else if h.Type == HookTypeExecCMD {
 		if h.Args["path"] == nil {
@@ -103,12 +111,15 @@ func (h Hook) validate() error {
 
 func (h Hook) UpdateVarArgs() HookUpdateVar {
 	return HookUpdateVar{
-		Name: h.getValueOrEmpty("name"),
-		Path: h.getValueOrEmpty("path"),
-		Type: h.getValueOrEmpty("type"),
+		Type:        h.getValueOrEmpty("type"),
+		Name:        evalEnvVar(h.getValueOrEmpty("name")),
+		Path:        evalEnvVar(h.getValueOrEmpty("path")),
+		Gitlab:      evalEnvVar(h.getValueOrEmpty("gitlab")),
+		GitlabToken: evalEnvVar(h.getValueOrEmpty("gitlab_token")),
 	}
 }
 
+// getValueOrEmpty fetch content in hook arguments, also evaluating the content for any env var pattern
 func (h Hook) getValueOrEmpty(key string) string {
 	argVal := h.Args[key]
 	if argVal == nil {
@@ -120,7 +131,7 @@ func (h Hook) getValueOrEmpty(key string) string {
 // ExecCMDArgs return the list of argument in execution hook exec_cmd
 func (h Hook) ExecCMDArgs() HookExecScript {
 	execArgs := HookExecScript{
-		Path: h.getValueOrEmpty("path"),
+		Path: evalEnvVar(h.getValueOrEmpty("path")),
 	}
 	execArgs.EnvVar = make(map[string]string)
 
@@ -131,7 +142,7 @@ func (h Hook) ExecCMDArgs() HookExecScript {
 			strValue, valueOk := value.(string)
 
 			if keyOk && valueOk {
-				execArgs.EnvVar[strKey] = strValue
+				execArgs.EnvVar[strKey] = evalEnvVar(strValue)
 			}
 		}
 	}
@@ -143,7 +154,11 @@ func (h Hook) StrArgs() string {
 	switch h.Type {
 	case HookTypeUpdateVar:
 		args := h.UpdateVarArgs()
-		return fmt.Sprintf("type:%s,path:%s,name:%s", args.Type, args.Path, args.Name)
+		strargs := fmt.Sprintf("type:%s,path:%s,name:%s", args.Type, args.Path, args.Name)
+		if args.Gitlab != "" {
+			strargs = fmt.Sprintf("%s,gitlab:%s", strargs, args.Gitlab)
+		}
+		return strargs
 	case HookTypeExecCMD:
 		args := h.ExecCMDArgs()
 		return fmt.Sprintf("path:%s", args.Path)
@@ -333,7 +348,7 @@ func (c Config) validate() (err error) {
 	return nil
 }
 
-// InitValues filling out the values
+// InitValues filling out the default values and some env variable evaluation
 func (c *Config) InitValues() error {
 	// evaluate contents from environment variable
 	c.Token = evalEnvVar(c.Token)
@@ -341,6 +356,9 @@ func (c *Config) InitValues() error {
 
 	for idx := range c.Managed {
 		managed := c.Managed[idx]
+		if managed.Type == ManagedTypePersonal {
+			c.Managed[idx].Path = "@personal"
+		}
 		for tkIdx := range managed.Tokens {
 			tkn := managed.Tokens[tkIdx]
 

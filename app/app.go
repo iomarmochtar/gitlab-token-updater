@@ -3,6 +3,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	cfg "github.com/iomarmochtar/gitlab-token-updater/pkg/config"
@@ -54,13 +55,15 @@ func (g GitlabTokenUpdater) listAccessTokens(mg cfg.ManagedToken) (results []acc
 	for _, token := range mg.Tokens {
 		isFound := false
 		for _, scToken := range tokens {
-			// ignore the revoked one
-			if scToken.Revoked {
+			// ignore the revoked or inactive
+			if scToken.Revoked || !scToken.Active {
 				tkID := scToken.ID
 				log.Debug().
 					Str("token", scToken.Path).
 					Str("path", scToken.Path).
-					Msgf("access token by id %d is revoked, skip it", tkID)
+					Bool("revoked", scToken.Revoked).
+					Bool("active", scToken.Active).
+					Msgf("access token by id %d is revoked or inactive, skip it", tkID)
 				continue
 			}
 
@@ -75,7 +78,12 @@ func (g GitlabTokenUpdater) listAccessTokens(mg cfg.ManagedToken) (results []acc
 		}
 
 		if !isFound {
-			log.Warn().Str("token", token.Name).Str("path", mg.Path).Msg("token is not found")
+			err = fmt.Errorf("token %s in %s is not exists", token.Name, mg.Path)
+			if g.strict {
+				return nil, err
+			} else {
+				log.Warn().Msg(err.Error())
+			}
 		}
 	}
 
@@ -109,25 +117,34 @@ func (g GitlabTokenUpdater) execHook(hk cfg.Hook, newToken string) (err error) {
 		return g.glAPI.Auth(newToken)
 	case cfg.HookTypeUpdateVar:
 		args := hk.UpdateVarArgs()
+		glExecutor := g.glAPI
+		if args.Gitlab != "" {
+			log.Info().Msgf("using external Gitlab instance (`%s`) in update_var hook", args.Gitlab)
+			if glExecutor, err = g.glAPI.InitGitlab(args.Gitlab, args.GitlabToken); err != nil {
+				return err
+			}
+		}
+
 		if args.Type == cfg.ManagedTypeRepository {
 			if g.dryRun {
-				_, err := g.glAPI.GetRepoVar(args.Path, args.Name)
+				_, err := glExecutor.GetRepoVar(args.Path, args.Name)
 				return err
 			}
 
-			return g.glAPI.UpdateRepoVar(
+			return glExecutor.UpdateRepoVar(
 				args.Path,
 				args.Name,
 				newToken,
 			)
 		}
 
+		// managed_type: group
 		if g.dryRun {
-			_, err := g.glAPI.GetGroupVar(args.Path, args.Name)
+			_, err := glExecutor.GetGroupVar(args.Path, args.Name)
 			return err
 		}
 
-		return g.glAPI.UpdateGroupVar(
+		return glExecutor.UpdateGroupVar(
 			args.Path,
 			args.Name,
 			newToken,
@@ -186,7 +203,7 @@ func (g *GitlabTokenUpdater) Do() error {
 			}
 
 			if !(g.forceRenew || validToRenew) {
-				logTkn.Debug().Msg("not identified as need to renew")
+				logTkn.Debug().Any("expires_at", expiresAt).Msg("not identified as need to renew")
 				continue
 			}
 

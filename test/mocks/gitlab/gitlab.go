@@ -85,6 +85,21 @@ func (mr *MockGitlabAPIMockRecorder) GetRepoVar(path, varName any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepoVar", reflect.TypeOf((*MockGitlabAPI)(nil).GetRepoVar), path, varName)
 }
 
+// InitGitlab mocks base method.
+func (m *MockGitlabAPI) InitGitlab(baseURL, token string) (gitlab.GitlabAPI, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitGitlab", baseURL, token)
+	ret0, _ := ret[0].(gitlab.GitlabAPI)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InitGitlab indicates an expected call of InitGitlab.
+func (mr *MockGitlabAPIMockRecorder) InitGitlab(baseURL, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitGitlab", reflect.TypeOf((*MockGitlabAPI)(nil).InitGitlab), baseURL, token)
+}
+
 // ListGroupAccessToken mocks base method.
 func (m *MockGitlabAPI) ListGroupAccessToken(path string) ([]gitlab.GitlabAccessToken, error) {
 	m.ctrl.T.Helper()

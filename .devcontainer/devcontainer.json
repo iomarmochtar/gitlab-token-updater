@@ -4,5 +4,11 @@
 	"features": {
 		"golang": "1.23.1"
 	},
-	"postCreateCommand": "make dev-tools"
+	"postCreateCommand": "make dev-tools",
+	"runArgs": [
+		"--userns=keep-id"
+	],
+	"containerEnv": {
+		"HOME": "/home/vscode"
+	}
 }

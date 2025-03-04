@@ -44,6 +44,17 @@ func genSampleManagedTokens() []c.ManagedToken {
 	}
 }
 
+type EnvVar map[string]string
+
+// helperTestSetEnv help you to set emporary env var during test func
+func helperTestSetEnv(t *testing.T, title string, envs EnvVar, assertion func(t *testing.T)) {
+	for k, v := range envs {
+		defer os.Unsetenv(k)
+		_ = os.Setenv(k, v)
+	}
+	t.Run(title, assertion)
+}
+
 func TestConfig_InitValues_Validations(t *testing.T) {
 	testCases := map[string]struct {
 		Cfg         func() *c.Config
@@ -390,6 +401,37 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 			},
 			ExpectedErr: c.ErrValidationHookUpdateVarMissingPath,
 		},
+		"hook update_var missing gitlab token if external gitlab set": {
+			Cfg: func() *c.Config {
+				cfg := c.NewConfig()
+				cfg.Token = "abc"
+				cfg.Managed = []c.ManagedToken{
+					{
+						Path: "/some/path",
+						Type: c.ManagedTypeRepository,
+						Tokens: []c.AccessToken{
+							{
+								Name: "TF IaC",
+								Hooks: []c.Hook{
+									{
+										Type: c.HookTypeUpdateVar,
+										Args: map[string]any{
+											"name":         "CI_VAR",
+											"type":         "group",
+											"path":         "path/to/group",
+											"gitlab":       "https://another.gitlab.dev",
+											"gitlab_token": "${THIS_VAR_IS_NOT_SET}",
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return cfg
+			},
+			ExpectedErr: c.ErrValidationHookUpdateMissingGitlabToken,
+		},
 		"hook exec_cmd missing path": {
 			Cfg: func() *c.Config {
 				cfg := c.NewConfig()
@@ -513,11 +555,7 @@ func TestConfig_InitValues_Validations(t *testing.T) {
 }
 
 func TestConfig_InitValues_Defaults(t *testing.T) {
-	t.Run("token config env var subs", func(t *testing.T) {
-		envName := "GITLAB_TOKEN"
-		defer os.Unsetenv(envName)
-		_ = os.Setenv(envName, "abc")
-
+	helperTestSetEnv(t, "token config env var subs", EnvVar{"GITLAB_TOKEN": "abc"}, func(t *testing.T) {
 		cfg := c.NewConfig()
 		cfg.Managed = genSampleManagedTokens()
 		cfg.Token = "glpat-${GITLAB_TOKEN}"
@@ -603,6 +641,20 @@ func TestHook_StrArgs(t *testing.T) {
 		assert.Equal(t,
 			"type:repository,path:/path/to/repo,name:SOME_VAR",
 			sampleHookUpdateVar.StrArgs())
+
+		o := c.Hook{
+			Type: c.HookTypeUpdateVar,
+			Args: map[string]any{
+				"name":         "var1",
+				"path":         "path/to/group",
+				"type":         c.ManagedTypeGroup,
+				"gitlab":       "https://another.gitlab.dev",
+				"gitlab_token": "abc",
+			},
+		}
+		assert.Equal(t,
+			"type:group,path:path/to/group,name:var1,gitlab:https://another.gitlab.dev",
+			o.StrArgs())
 	})
 
 	t.Run("hook exec cmd", func(t *testing.T) {
@@ -613,6 +665,58 @@ func TestHook_StrArgs(t *testing.T) {
 
 	t.Run("use_token hook", func(t *testing.T) {
 		assert.Equal(t, "", c.Hook{}.StrArgs())
+	})
+}
+
+func TestHook_UpdateVarArgs(t *testing.T) {
+	envs := EnvVar{
+		"var1":      "injected",
+		"var2":      "another",
+		"DEV_TOKEN": "glpat-devtoken",
+	}
+	helperTestSetEnv(t, "evaluating env var value", envs, func(t *testing.T) {
+		o := c.Hook{
+			Type: c.HookTypeUpdateVar,
+			Args: map[string]any{
+				"name":         "This-${var1}-sample",
+				"path":         "path/to/${var2}/repo",
+				"type":         c.ManagedTypeRepository,
+				"gitlab":       "https://another.gitlab.dev/",
+				"gitlab_token": "${DEV_TOKEN}",
+			},
+		}
+		oVar := o.UpdateVarArgs()
+		assert.Equal(t, c.ManagedTypeRepository, oVar.Type)
+		assert.Equal(t, "This-injected-sample", oVar.Name)
+		assert.Equal(t, "path/to/another/repo", oVar.Path)
+		assert.Equal(t, "https://another.gitlab.dev/", oVar.Gitlab)
+		assert.Equal(t, "glpat-devtoken", oVar.GitlabToken)
+	})
+}
+
+func TestHook_ExecCMDArgs(t *testing.T) {
+	envs := EnvVar{
+		"var1":      "injected",
+		"var2":      "another",
+		"DEV_TOKEN": "glpat-devtoken",
+	}
+	helperTestSetEnv(t, "evaluating env var value", envs, func(t *testing.T) {
+		o := c.Hook{
+			Type: c.HookTypeExecCMD,
+			Args: map[string]any{
+				"path": "./path/to/${var1}.sh",
+				"env": map[any]any{
+					"VAR1":  "${var2}",
+					"TOKEN": "${DEV_TOKEN}",
+				},
+			},
+		}
+		oVar := o.ExecCMDArgs()
+		assert.Equal(t, "./path/to/injected.sh", oVar.Path)
+		assert.Equal(t, map[string]string{
+			"VAR1":  "another",
+			"TOKEN": "glpat-devtoken",
+		}, oVar.EnvVar)
 	})
 }
 

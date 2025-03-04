@@ -1,3 +1,15 @@
+# 0.4.0
+
+### Features and enhancements
+
+- [hook] update variable contents in another Gitlab instance
+- [hook] evaluting env var character in hook args for `update_var` and `.exec_cmd` (`.envs`)
+
+### Bug Fixes
+
+- non exists access token in configuration not treated as an error
+- processing inactive token
+
 # 0.3.0
 
 ### Features and enhancements
