@@ -21,6 +21,7 @@ type SHExecutor struct{}
 // Exec executing shell command, also the passing environment variables to the executor
 func (s SHExecutor) Exec(command string, envVars map[string]string) (results []byte, err error) {
 	cmd := exec.Command(command)
+	cmd.Env = os.Environ()
 	for k, v := range envVars {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
