@@ -3,7 +3,7 @@
 ### Features and enhancements
 
 - [hook] update variable contents in another Gitlab instance
-- [hook] evaluting env var character in hook args for `update_var` and `.exec_cmd` (`.envs`)
+- [hook] evaluting env var character in hook args for `update_var` and `.exec_cmd` (`.env`)
 
 ### Bug Fixes
 
