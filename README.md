@@ -84,7 +84,7 @@ Run with the `--strict` argument. Any error encountered during execution will be
 
 ## Configuration
 
-Consist of YAML formatted content, see the sample one in [sample-config.yml](./examples/sample-config.yml), these are the available properties
+Consist of YAML formatted content, see the sample one in [main-config.yml](./examples/main-config.yml), these are the available properties
 
 | Param                                                  | Description                                                                                                 | Defaults              |             Required              |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | --------------------- | :-------------------------------: |
